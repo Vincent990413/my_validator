@@ -1,16 +1,19 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"goLearningProject/main/validator/comparisons/num_comparison"
-	constants "goLearningProject/main/validator/const"
+	"goLearningProject/main/validator/const"
 	"reflect"
+	"strings"
 	"sync"
 )
 
 type Student struct {
-	Age   int    `validate:"gt=10"`
-	Hobby string `validate:"eq=basketball"`
+	Age    int    `validate:"gt=10"`
+	Hobby  string `validate:"eq=basketball"`
+	Gender string `validate:"required"`
 }
 
 type Validator struct {
@@ -28,10 +31,18 @@ func (v *Validator) validate(obj interface{}) (bool, error) {
 
 	objectType := reflect.TypeOf(obj)
 	objectValues := reflect.ValueOf(obj)
+
 	for i := 0; i < objectValues.NumField(); i++ {
 		fieldValue := objectValues.Field(i)
 		tagContent := objectType.Field(i).Tag.Get("validate")
 		fieldKind := fieldValue.Kind()
+
+		if strings.Contains(tagContent, "required") {
+			fieldRequired := objectValues.FieldByName(objectType.Field(i).Name)
+			if strings.Compare(fieldRequired.String(), "") == 0 {
+				return false, errors.New("validate failed, the field " + objectType.Field(i).Name + " must be required!")
+			}
+		}
 
 		if tagContent == "nil" {
 			continue
@@ -53,13 +64,13 @@ func (v *Validator) validate(obj interface{}) (bool, error) {
 
 func main() {
 	var student = Student{
-		Age:   10,
+		Age:   11,
 		Hobby: "football",
 	}
 
 	validator := NewEmptyValidator()
 	validate, err := validator.validate(student)
-		if err != nil {
+	if err != nil {
 		fmt.Println("errors:" + err.Error())
 	}
 	fmt.Println(validate)
